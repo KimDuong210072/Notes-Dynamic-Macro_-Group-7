@@ -18,8 +18,8 @@ classdef equilibrium
 
             par.r = r0; % Guess of r.
 
-            [par,sol] = solve.firm_problem(par); % Firms.
-            sol = solve.hh_problem(par,sol); % Households.
+            [par,sol] = solvewithtax.firm_problem(par); % Firms.
+            sol = solvewithtax.hh_problem(par,sol); % Households.
             sim = simulate.economy(par,sol);
 
             F = norm(sim.asup-sol.k);

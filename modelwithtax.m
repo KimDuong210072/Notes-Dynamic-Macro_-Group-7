@@ -32,6 +32,10 @@ classdef modelwithtax
             assert(par.sigma_eps > 0)
             assert(abs(par.rho) < 1)
 
+            par.age = [1, 2, 3]; % 1 = young, 2 = middle-aged, 3 = old
+            par.nage = 3;
+            par.e = [0.0, 1.0, 0.0]; % Productivity profile (only middle-aged work)
+
             %% Prices.
             par.r = 0.06;
             par.omega = 0.2;
@@ -39,8 +43,8 @@ classdef modelwithtax
 
             %% Simulation parameters.
             par.seed = 2025;
-            par.T = 10000;
-            par.N = 3000;
+            par.T = 10;
+            par.N = 30;
         end
         
         function par = gen_grids(par)
@@ -56,7 +60,7 @@ classdef modelwithtax
             assert(par.zlen > 3)
             assert(par.m > 0)
 
-            [zgrid,pmat] = model.tauchen(par.mu,par.rho,par.sigma_eps,par.zlen,par.m);
+            [zgrid,pmat] = modelwithtax.tauchen(par.mu,par.rho,par.sigma_eps,par.zlen,par.m);
             par.zgrid = exp(zgrid);
             par.pmat = pmat;
         end

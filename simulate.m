@@ -46,7 +46,7 @@ classdef simulate
                 zsim(1,i) = zgrid(z0_ind(i)); % Productivity in period 0.
                 csim(1,i) = cpol(a0_ind(i),z0_ind(i)); % Consumption in period 0 given a0.
                 asim(1,i) = apol(a0_ind(i),z0_ind(i)); % Savings for period 1 given a0.
-                usim(1,i) = model.utility(csim(1,i),par); % Utility in period 0 given a0.
+                usim(1,i) = modelwithtax.utility(csim(1,i),par); % Utility in period 0 given a0.
             end
 
             %% Simulate endogenous variables.
@@ -57,7 +57,7 @@ classdef simulate
                     zsim(j,i) = zgrid(z0_ind(i)); % Productivity in period 0.
                     csim(j,i) = cpol(at_ind,z0_ind(i)); % Consumption in period t.
                     asim(j,i) = apol(at_ind,z0_ind(i)); % Savings for period t+1.
-                    usim(j,i) = model.utility(csim(j,i),par); % Utility in period t.
+                    usim(j,i) = modelwithtax.utility(csim(j,i),par); % Utility in period t.
                     z1_ind = find(rand<=cmat(z0_ind(i),:)); % Draw income shock for next period.
                     z0_ind(i) = z1_ind(1);
                 end
