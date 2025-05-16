@@ -1,16 +1,13 @@
 %% File Info.
-
 %{
     model.m
     -------
-    This code sets up the model.
+    This code sets up the model with UBI and linear taxes.
 %}
 
 %% Model class.
-
 classdef modelwithtax
     methods(Static)
-
         function par = setup()            
             par = struct();
 
@@ -38,8 +35,9 @@ classdef modelwithtax
 
             %% Prices.
             par.r = 0.06;
-            par.omega = 0.2;
-            par.tau = 0.2; % Income tax rate: 20%
+            par.w = 0.2; % Wage (updated by firm_problem)
+            par.tau = 0.2; % Initial linear income tax rate (adjusted for budget balance)
+            par.ubi = 0.1; % Universal Basic Income (per agent, per period)
 
             %% Simulation parameters.
             par.seed = 2025;

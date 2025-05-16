@@ -1,17 +1,14 @@
 %% File Info.
-
 %{
     solve.m
     -------
-    This code solves the model.
+    This code solves the model with UBI, linear taxes, and computes welfare using backward induction.
 %}
 
 %% Solve class.
-
 classdef solvewithtax
     methods(Static)
-
-        function sol = hh_problem(par,sol)            
+        function sol = hh_problem(par, sol)
             beta = par.beta;
             agrid = par.agrid;
             alen = par.alen;
@@ -20,71 +17,90 @@ classdef solvewithtax
             pmat = par.pmat;
             r = par.r;
             w = par.w;
-            tau = par.tau;
+            ubi = par.ubi;
             phi = 0; % No borrowing
 
-            v1 = nan(alen,zlen,2);
-            a1 = nan(alen,zlen);
-            c1 = nan(alen,zlen);
-            c2 = nan(alen,zlen); % Young consumption
-            c3 = nan(alen,zlen); % Old consumption
+            % Initialize arrays
+            v = nan(alen, zlen, par.nage); % Value function for each age
+            c = nan(alen, zlen, par.nage); % Consumption for each age
+            a_next = nan(alen, zlen, par.nage); % Savings (a_{t+1}) for each age
 
+            fprintf('------------Beginning Backward Induction.------------\n\n')
 
-            crit = 1e-6;
-            maxiter = 10000;
-            diff = 1;
-            iter = 0;
+            % Compute tax revenue and adjust tau for budget balance
+            income = w * par.e(2) * zgrid; % Middle-aged labor income
+            avg_income = mean(income); % Average labor income
+            total_ubi = par.ubi * par.nage; % Total UBI payments (3 age groups)
+            par.tau = total_ubi / avg_income; % Tax rate to balance budget
+            tau = par.tau;
+            fprintf('Adjusted tax rate for budget balance: tau = %.4f\n', tau)
 
-            fprintf('------------Beginning Value Function Iteration.------------\n\n')
-
-            c0 = (1 + r) * agrid + w .* zgrid;
-            v0 = modelwithtax.utility(c0, par) ./ (1 - beta);
-            
-            while diff > crit && iter < maxiter %Cần sửa: change to for loop, vd như for age= 1-10 or smthing (j = 10)
+            % Backward induction: Loop over ages in reverse order (3, 2, 1)
+            for age = par.nage:-1:1
+                fprintf('Solving for age %d\n', age)
                 for i = 1:alen
                     if agrid(i) >= phi
                         for j = 1:zlen
-                            income = (1 - tau) * w * par.e(2) * zgrid(j); % middle-aged only
-                            T = tau * w * mean(zgrid); % Transfer to young
-                            asset_choices = agrid;
-                            c = (1 + r) * agrid(i) + income + T - asset_choices;
-        
-                            ev = v0 * pmat(j,:)';
-                            vall = modelwithtax.utility(c, par) + beta * ev;
-                            vall(c <= 0) = -inf;
-        
-                            [vmax, ind] = max(vall);
-        
-                            v1(i,j) = vmax;
-                            c1(i,j) = c(ind);
-                            a1(i,j) = asset_choices(ind);
-        
-                            c2(i,j) = T; % Young consumption
-                            c3(i,j) = a1(i,j); % Old consumption
+                            % Current resources
+                            income = (1 - tau) * w * par.e(age) * zgrid(j); % Labor income (0 for young/old)
+                            resources = (1 + r) * agrid(i) + income + ubi;
+
+                            if age == par.nage % Old age (age 3)
+                                % Consume all resources (no savings)
+                                c(i, j, age) = resources;
+                                a_next(i, j, age) = 0; % No savings
+                                v(i, j, age) = modelwithtax.utility(c(i, j, age), par);
+                            else % Young (age 1) or Middle-aged (age 2)
+                                % Asset choices for next period
+                                asset_choices = agrid;
+                                c_candidates = resources - asset_choices;
+                                c_candidates(c_candidates <= 0) = -inf; % Ensure positive consumption
+
+                                % Expected value for next age
+                                if age == 1
+                                    % Young: Transition to middle-aged, average over z'
+                                    ev = mean(v(:, :, age + 1), 2); % Average over productivity states
+                                else
+                                    % Middle-aged: Transition to old, use pmat
+                                    ev = v(:, :, age + 1) * pmat(j, :)';
+                                end
+
+                                % Utility + discounted expected value
+                                vall = modelwithtax.utility(c_candidates, par) + beta * ev;
+                                vall(c_candidates <= 0) = -inf;
+
+                                % Maximize
+                                [vmax, ind] = max(vall);
+                                v(i, j, age) = vmax;
+                                c(i, j, age) = c_candidates(ind);
+                                a_next(i, j, age) = asset_choices(ind);
+                            end
                         end
                     end
                 end
-        
-                diff = norm(v1 - v0);
-                v0 = v1;
-                iter = iter + 1;
-        
-                if mod(iter, 25) == 0
-                    fprintf('Iteration: %d.\n', iter)
-                end
             end
 
-            fprintf('\nConverged in %d iterations.\n\n', iter)
-            fprintf('------------End of Value Function Iteration.------------\n')
+            fprintf('------------End of Backward Induction.------------\n')
 
-            sol.a = a1;
-            sol.c = c1;
-            sol.c2 = c2;     % Young consumption
-            sol.c3 = c3;     % Old consumption
-            sol.v = v1;
+            % Compute welfare (average utility of consumption)
+            util = nan(alen, zlen, par.nage);
+            for age = 1:par.nage
+                util(:, :, age) = modelwithtax.utility(c(:, :, age), par);
+            end
+            avg_utility = mean(util(:)); % Average over all ages, assets, productivity
+            fprintf('Average utility of consumption: %.4f\n', avg_utility)
+
+            % Store results
+            sol.a = a_next(:, :, 2); % Savings from middle-aged to old
+            sol.c = c(:, :, 2); % Middle-aged consumption
+            sol.c2 = c(:, :, 1); % Young consumption
+            sol.c3 = c(:, :, 3); % Old consumption
+            sol.v = v;
+            sol.welfare = avg_utility;
+            sol.tau = tau;
         end
 
-        function [par,sol] = firm_problem(par)
+        function [par, sol] = firm_problem(par)
             delta = par.delta;
             alpha = par.alpha;
             r = par.r;
@@ -96,8 +112,3 @@ classdef solvewithtax
         end
     end
 end
-
-%UBI: In the budget constraint, 
-%Consider linear taxes
-%Welfare effect, compute average utility of consumption. 
-%
