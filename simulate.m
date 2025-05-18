@@ -1,82 +1,107 @@
-%% File Info.
-
-%{
-
-    simulate.m
-    ----------
-    This code simulates the model.
-
-%}
-
-%% Simulate class.
-
 classdef simulate
     methods(Static)
-        %% Simulate the model. 
-        
-        function sim = economy(par,sol)            
+        function sim = economy(par, sol)
             %% Set up.
-            
-            agrid = par.agrid; % Assets today (state variable).
-            zgrid = par.zgrid; % Productivity.
-            pmat = par.pmat; % Transition matrix.
+            agrid = par.agrid;
+            zgrid = par.zgrid;
+            pmat = par.pmat;
+            nage = par.nage;
+            N = par.N;
+            slen = par.slen;
+            skill_assign = par.skill_assign;
+            w = par.w;
+            r = par.r;
+            ubi = par.ubi;
+            wage_mult = par.wage_mult;
+            psi = par.psi;
+            eta = par.eta;
 
-            apol = sol.a; % Policy function for capital.
-            cpol = sol.c; % Policy function for consumption.
+            cpol = sol.c; % Middle-aged consumption
+            cpol_young = sol.c2; % Young consumption
+            cpol_old = sol.c3; % Old consumption
+            apol = sol.a; % Middle-aged savings
+            lpol = sol.l; % Labor supply
 
-            T = par.T+10; % Time periods.
-            N = par.N; % People.
+            T = nage; % 3 periods (young, middle-aged, old)
 
-            zsim = nan(T,N); % Container for simulated income.
-            asim = nan(T,N); % Container for simulated savings.
-            csim = nan(T,N); % Container for simulated consumption.
-            usim = nan(T,N); % Container for simulated utility.
-            
+            zsim = nan(T, N);
+            asim = nan(T, N);
+            csim = nan(T, N);
+            usim = nan(T, N);
+            lsim = nan(T, N);
+
             %% Begin simulation.
-            
             rng(par.seed);
 
-            pmat0 = pmat^100; % Stationary distirbution.
-            cmat = cumsum(pmat,2); % CDF matrix.
+            % Initial conditions
+            pmat0 = pmat^100; % Stationary distribution
+            cmat = cumsum(pmat, 2); % CDF matrix
+            z0_ind = randsample(par.zlen, N, true, pmat0(1, :))'; % Initial productivity indices
+            a0_ind = ones(N, 1); % Initial assets = 0 (agrid(1) = 0)
 
-            z0_ind = randsample(par.zlen,N,true,pmat0(1,:))'; % Index for initial income.
-            a0_ind = randsample(par.alen,N,true)'; % Index for initial wealth.
+            % Debug skill assignment
+            fprintf('Number of low-skill agents: %d\n', sum(skill_assign == 1));
+            fprintf('Number of high-skill agents: %d\n', sum(skill_assign == 2));
 
-            for i = 1:N % Person loop.
-                zsim(1,i) = zgrid(z0_ind(i)); % Productivity in period 0.
-                csim(1,i) = cpol(a0_ind(i),z0_ind(i)); % Consumption in period 0 given a0.
-                asim(1,i) = apol(a0_ind(i),z0_ind(i)); % Savings for period 1 given a0.
-                usim(1,i) = modelwithtax.utility(csim(1,i),par); % Utility in period 0 given a0.
+            %% Simulate life-cycle
+            for i = 1:N
+                s = skill_assign(i); % Skill type (1 = low, 2 = high)
+
+                % Age 1: Young
+                at_ind = a0_ind(i);
+                zt_ind = z0_ind(i);
+                csim(1, i) = cpol_young(at_ind, zt_ind, 1, s);
+                asim(1, i) = agrid(at_ind); % Assets = 0
+                usim(1, i) = modelwithtax.utility(csim(1, i), par);
+                lsim(1, i) = 0;
+                a_next = 0; % Young don't save
+                at_ind = find(agrid == a_next);
+
+                % Age 2: Middle-aged
+                zt_ind = z0_ind(i);
+                csim(2, i) = cpol(at_ind, zt_ind, 1, s);
+                asim(2, i) = apol(at_ind, zt_ind, 1, s);
+                lsim(2, i) = lpol(at_ind, zt_ind, 1, s);
+                fprintf('Agent %d, Skill %d, Savings: %.4f, Labor: %.4f\n', i, s, asim(2, i), lsim(2, i)); % Debug
+                usim(2, i) = modelwithtax.utility(csim(2, i), par) - psi * (lsim(2, i)^(1+eta))/(1+eta);
+                zsim(2, i) = zgrid(zt_ind);
+                at_ind = find(agrid <= asim(2, i), 1, 'last');
+                z1_ind = find(rand <= cmat(zt_ind, :));
+                zt_ind = z1_ind(1);
+
+                % Age 3: Old
+                csim(3, i) = cpol_old(at_ind, zt_ind, 1, s);
+                asim(3, i) = 0;
+                usim(3, i) = modelwithtax.utility(csim(3, i), par);
+                lsim(3, i) = 0;
             end
 
-            %% Simulate endogenous variables.
-
-            for j = 2:T % Time loop.
-                for i = 1:N % Person loop.
-                    at_ind = find(asim(j-1,i)==agrid); % Savings choice in the previous period is the state today. Find where the latter is on the grid.
-                    zsim(j,i) = zgrid(z0_ind(i)); % Productivity in period 0.
-                    csim(j,i) = cpol(at_ind,z0_ind(i)); % Consumption in period t.
-                    asim(j,i) = apol(at_ind,z0_ind(i)); % Savings for period t+1.
-                    usim(j,i) = modelwithtax.utility(csim(j,i),par); % Utility in period t.
-                    z1_ind = find(rand<=cmat(z0_ind(i),:)); % Draw income shock for next period.
-                    z0_ind(i) = z1_ind(1);
-                end
-
-                if j >= 11 && norm(mean(asim(j-9:j,:),'all')-mean(asim(j-10:j-1,:),'all')) < 0.0001
-                    break
-                end
-
-            end
-
+            %% Compute aggregates and welfare
             sim = struct();
-            
-            sim.zsim = zsim(j-9:j,:); % Simulated productivity.
-            sim.asim = asim(j-9:j,:); % Simulated savings.
-            sim.csim = csim(j-9:j,:); % Simulated consumption.
-            sim.usim = usim(j-9:j,:); % Simulated utility.
-            sim.asup = mean(asim(j-9:j,:),'all'); % Simulated savings.
-             
+            sim.zsim = zsim;
+            sim.asim = asim;
+            sim.csim = csim;
+            sim.usim = usim;
+            sim.lsim = lsim;
+            sim.asup = mean(asim(2, :));
+            sim.csup = mean(csim, 'all');
+            sim.lsup = mean(lsim(2, :));
+
+            welfare_low = mean(usim(:, skill_assign == 1), 'all', 'omitnan');
+            welfare_high = mean(usim(:, skill_assign == 2), 'all', 'omitnan');
+            welfare = mean(usim, 'all', 'omitnan');
+
+            sim.welfare = welfare;
+            sim.welfare_low = welfare_low;
+            sim.welfare_high = welfare_high;
+
+            fprintf('Simulation completed.\n')
+            fprintf('Average savings (middle-aged): %.4f\n', sim.asup)
+            fprintf('Average consumption: %.4f\n', sim.csup)
+            fprintf('Average labor supply (middle-aged): %.4f\n', sim.lsup)
+            fprintf('Welfare (overall): %.4f\n', sim.welfare)
+            fprintf('Welfare (low-skill): %.4f\n', sim.welfare_low)
+            fprintf('Welfare (high-skill): %.4f\n', sim.welfare_high)
         end
-        
     end
 end
