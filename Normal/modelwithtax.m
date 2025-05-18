@@ -48,6 +48,7 @@ classdef modelwithtax
             par.tau0 = 0.1; % Base tax rate for progressive tax
             par.tau1 = 0.005; % Marginal tax rate for progressive tax (was 0.01)
             par.ubi = 0.05; % Universal Basic Income (per agent, per period) (was 0.1)
+            par.lambda = 0.22;
             assert(par.r >= -1, 'Interest rate must allow non-negative returns')
             assert(par.w > 0, 'Wage must be positive')
             assert(par.tau0 >= 0 && par.tau1 >= 0, 'Tax rates must be non-negative')

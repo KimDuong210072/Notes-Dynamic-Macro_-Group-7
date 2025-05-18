@@ -3,6 +3,7 @@ classdef solvewithtax
         function [par, sol] = firm_problem(par)
             alpha = par.alpha;
             delta = par.delta;
+            lambda = par.lambda;
             r = par.r;
             e = par.e;
 
@@ -84,7 +85,7 @@ classdef solvewithtax
                                             labor = l_grid(il);
                                             y = w * wage_mult(s) * zgrid(j) * labor;
                                             tax_rate = tau0 + tau1 * y;
-                                            income = (1 - tax_rate) * y;
+                                            income = lambda * y^(1 - (tax_rate*y));
                                             c_candidates = resources + income - asset_choices;
                                             c_candidates(c_candidates <= 0) = -inf;
                                             u = modelwithtax.utility(c_candidates, par) - psi * (l_grid(il).^(1+eta))/(1+eta); % Use element-wise power .^
