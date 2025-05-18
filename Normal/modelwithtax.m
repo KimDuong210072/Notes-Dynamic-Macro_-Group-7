@@ -45,18 +45,20 @@ classdef modelwithtax
             %% Prices and Policy.
             par.r = 0.06; % Interest rate (fixed for PE)
             par.w = 0.2; % Base wage (updated by firm_problem)
-            par.tau0 = 0.1; % Base tax rate for progressive tax
-            par.tau1 = 0.005; % Marginal tax rate for progressive tax (was 0.01)
+            par.tau = 0.18; %Progressitivity of labor income tax
             par.ubi = 0.05; % Universal Basic Income (per agent, per period) (was 0.1)
-            par.lambda = 0.22;
             assert(par.r >= -1, 'Interest rate must allow non-negative returns')
             assert(par.w > 0, 'Wage must be positive')
-            assert(par.tau0 >= 0 && par.tau1 >= 0, 'Tax rates must be non-negative')
+            assert(par.tau >= 0, 'Tax rates must be non-negative')
             assert(par.ubi >= 0, 'UBI must be non-negative')
 
             %% Simulation parameters.
             par.T = 10; % Simulation periods (for extensions)
             assert(par.N > 0, 'Number of agents must be positive')
+
+            %% Tax
+            par.lambda = 0.22;
+
         end
 
         function u = utility(c, par)

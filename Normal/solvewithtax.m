@@ -4,6 +4,7 @@ classdef solvewithtax
             alpha = par.alpha;
             delta = par.delta;
             lambda = par.lambda;
+            tau = par.tau;
             r = par.r;
             e = par.e;
 
@@ -27,8 +28,6 @@ classdef solvewithtax
             ubi = par.ubi;
             wage_mult = par.wage_mult;
             slen = par.slen;
-            tau0 = par.tau0; % Base tax rate
-            tau1 = par.tau1; % Marginal tax rate
             phi = 0; % No borrowing
             psi = par.psi; % Disutility of labor
             eta = par.eta; % Inverse Frisch elasticity
@@ -41,24 +40,19 @@ classdef solvewithtax
 
             fprintf('------------Beginning Backward Induction.------------\n\n')
 
-            % Compute tax revenue and adjust tau0 for budget balance
+            % Compute tax revenue 
             total_tax_revenue = 0;
             for s = 1:slen
                 for j = 1:zlen
                     y = w * wage_mult(s) * zgrid(j); % Middle-aged income (assume l=1 for initial estimate)
-                    tax_rate = tau0 + tau1 * y;
-                    total_tax_revenue = total_tax_revenue + par.skill_prob(s) * tax_rate * y / zlen;
+                    income = lambda * y^(1-tau);
+                    total_tax_revenue = total_tax_revenue + par.skill_prob(s) * income/ zlen;
                 end
             end
             total_ubi = par.ubi * par.nage; % Total UBI payments
             if total_tax_revenue < total_ubi
                 scale = total_ubi / total_tax_revenue;
-                par.tau0 = par.tau0 * scale; % Adjust only tau0 to balance budget
-                % par.tau1 = par.tau1 * scale; % Do not scale tau1
             end
-            tau0 = par.tau0;
-            tau1 = par.tau1;
-            fprintf('Adjusted progressive tax: tau0 = %.4f, tau1 = %.4f\n', tau0, tau1)
 
             % Backward induction
             for age = par.nage:-1:1
@@ -84,7 +78,6 @@ classdef solvewithtax
                                         for il = 1:length(l_grid)
                                             labor = l_grid(il);
                                             y = w * wage_mult(s) * zgrid(j) * labor;
-                                            tax_rate = tau0 + tau1 * y;
                                             income = lambda * y^(1 - (tax_rate*y));
                                             c_candidates = resources + income - asset_choices;
                                             c_candidates(c_candidates <= 0) = -inf;
@@ -97,7 +90,7 @@ classdef solvewithtax
                                         [ia, il] = ind2sub([length(asset_choices), length(l_grid)], ind);
                                         v(i, j, age, s) = vmax;
                                         y = w * wage_mult(s) * zgrid(j) * l_grid(il);
-                                        c(i, j, age, s) = resources + (1 - (tau0 + tau1 * y)) * y - asset_choices(ia);
+                                        c(i, j, age, s) = resources + (1 - lambda * y^(1 - (tax_rate*y))) - asset_choices(ia);
                                         a_next(i, j, age, s) = asset_choices(ia);
                                         l(i, j, age, s) = l_grid(il);
                                     else % Young: No labor
@@ -126,8 +119,6 @@ classdef solvewithtax
             sol.v = v;
             sol.a = a_next(:, :, 2, :); % Middle-aged savings
             sol.l = l(:, :, 2, :); % Middle-aged labor supply
-            sol.tau0 = tau0;
-            sol.tau1 = tau1;
 
             % Compute welfare
             util = nan(alen, zlen, par.nage, slen);
