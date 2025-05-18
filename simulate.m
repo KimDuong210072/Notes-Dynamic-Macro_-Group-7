@@ -7,12 +7,7 @@ classdef simulate
             pmat = par.pmat;
             nage = par.nage;
             N = par.N;
-            slen = par.slen;
             skill_assign = par.skill_assign;
-            w = par.w;
-            r = par.r;
-            ubi = par.ubi;
-            wage_mult = par.wage_mult;
             psi = par.psi;
             eta = par.eta;
 

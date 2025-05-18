@@ -9,7 +9,7 @@
 classdef my_graph
     methods(Static)
         %% Plot wealth distribution by skill type (Partial Equilibrium).
-        function [] = plot_dist(sim, par)
+        function [] = plot_dist(par, sol, sim)
             figure(1)
             set(gcf, 'Position', [100, 100, 1200, 400])
 
@@ -30,10 +30,32 @@ classdef my_graph
 
             saveas(gcf, 'wealth_distribution_pe.png')
         end
+        %% Plot wealth distribution by skill type (General Equilibrium).
+        function [] = plot_dist_ge(sim_ge, par_ge, sol_ge)
+            figure(2)
+            set(gcf, 'Position', [100, 100, 1200, 400])
+
+            asim_middle = sim_ge.asim(2, :); % Middle-aged savings
+            skill_assign = par_ge.skill_assign;
+
+            subplot(1, 2, 1)
+            histogram(asim_middle(skill_assign == 1), 20, 'Normalization', 'probability')
+            xlabel('$a$', 'Interpreter', 'latex', 'FontSize', 12)
+            ylabel('Probability', 'Interpreter', 'latex', 'FontSize', 12)
+            title('Wealth Distribution (Low-Skill, Middle-Aged)', 'Interpreter', 'latex', 'FontSize', 14)
+
+            subplot(1, 2, 2)
+            histogram(asim_middle(skill_assign == 2), 20, 'Normalization', 'probability')
+            xlabel('$a$', 'Interpreter', 'latex', 'FontSize', 12)
+            ylabel('Probability', 'Interpreter', 'latex', 'FontSize', 12)
+            title('Wealth Distribution (High-Skill, Middle-Aged)', 'Interpreter', 'latex', 'FontSize', 14)
+
+            saveas(gcf, 'wealth_distribution_pe.png')
+        end
 
         %% Plot consumption policy functions by age and skill (Partial Equilibrium).
-        function [] = cfun(par, sol)
-            figure(2)
+        function [] = cfun(sim, par, sol) 
+            figure(3)
             set(gcf, 'Position', [100, 100, 1200, 800])
 
             agrid = par.agrid;
@@ -76,8 +98,8 @@ classdef my_graph
         end
 
         %% Plot value functions by age and skill (Partial Equilibrium).
-        function [] = vfun(par, sol)
-            figure(3)
+        function [] = vfun(par, sol, sim)
+            figure(4)
             set(gcf, 'Position', [100, 100, 1200, 800])
 
             agrid = par.agrid;
@@ -102,7 +124,7 @@ classdef my_graph
 
         %% Plot labor supply distribution by skill type (Partial Equilibrium).
         function [] = plot_labor_dist(sim, par)
-            figure(4)
+            figure(5)
             set(gcf, 'Position', [100, 100, 1200, 400])
 
             lsim_middle = sim.lsim(2, :); % Middle-aged labor supply
