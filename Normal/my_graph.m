@@ -54,7 +54,7 @@ classdef my_graph
         end
 
         %% Plot consumption policy functions by age and skill (Partial Equilibrium).
-        function [] = cfun(sim, par, sol) 
+        function [] = cfun(par, sol, sim)
             figure(3)
             set(gcf, 'Position', [100, 100, 1200, 800])
 

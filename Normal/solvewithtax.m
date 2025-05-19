@@ -3,7 +3,6 @@ classdef solvewithtax
         function [par, sol] = firm_problem(par)
             alpha = par.alpha;
             delta = par.delta;
-            lambda = par.lambda;
             r = par.r;
             e = par.e;
 
@@ -21,6 +20,7 @@ classdef solvewithtax
             alen = par.alen;
             zgrid = par.zgrid;
             zlen = par.zlen;
+            lambda = par.lambda;
             pmat = par.pmat;
             r = par.r;
             w = par.w;
