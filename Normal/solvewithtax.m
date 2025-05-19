@@ -4,113 +4,152 @@ classdef solvewithtax
             alpha = par.alpha;
             delta = par.delta;
             r = par.r;
-            e = par.e;
 
-            k = ((r + delta) / alpha)^(1 / (alpha - 1)); % Capital stock (from FOC)
-            w = (1 - alpha) * (k^alpha); % Wage (from FOC)
+            % Capital from FOC
+            k = ((r + delta) / alpha)^(1 / (alpha - 1)); 
 
-            par.w = w;
+            % Base wage (per efficiency unit of labor)
+            w_base = (1 - alpha) * k^alpha;
+
+            % Compute skill-specific wages
+            par.w_base = w_base;
+            par.w_skill = w_base * par.wage_mult;  % [low-skill, high-skill]
+
             sol.k = k;
-            sol.wage = w * e(2); % Wage for middle-aged (e(2) = 1)
+            sol.wage_low = par.w_skill(1);  % for reporting
+            sol.wage_high = par.w_skill(2);
         end
 
-        function sol = hh_problem(par, sol)
+        function sol = hh_problem(par, sol, use_tax, use_ubi)
+            if nargin < 3, use_tax = true; end
+            if nargin < 4, use_ubi = true; end
+
+            % Parameters
             beta = par.beta;
-            agrid = par.agrid;
-            alen = par.alen;
-            zgrid = par.zgrid;
-            zlen = par.zlen;
-            lambda = par.lambda;
+            agrid = par.agrid; alen = par.alen;
+            zgrid = par.zgrid; zlen = par.zlen;
             pmat = par.pmat;
             r = par.r;
-            w = par.w;
-            ubi = par.ubi;
+            ubi = par.ubi * use_ubi;
             wage_mult = par.wage_mult;
             slen = par.slen;
-            tau0 = par.tau0; % Base tax rate
-            tau1 = par.tau1; % Marginal tax rate
-            phi = 0; % No borrowing
-            psi = par.psi; % Disutility of labor
-            eta = par.eta; % Inverse Frisch elasticity
+            lambda = par.lambda * use_tax;
+            tau = par.tau * use_tax;
+            phi = -0.1;
+            psi = par.psi;
+            eta = par.eta;
+            l_min = 0.2;
 
-            % Initialize arrays
-            v = nan(alen, zlen, par.nage, slen); % Value function
-            c = nan(alen, zlen, par.nage, slen); % Consumption
-            a_next = nan(alen, zlen, par.nage, slen); % Savings
-            l = nan(alen, zlen, par.nage, slen); % Labor supply
+            % Value and policy function containers
+            v = nan(alen, zlen, par.nage, slen);
+            c = nan(alen, zlen, par.nage, slen);
+            a_next = nan(alen, zlen, par.nage, slen);
+            l = nan(alen, zlen, par.nage, slen);
 
-            fprintf('------------Beginning Backward Induction.------------\n\n')
+            fprintf('------------Beginning Backward Induction (Tax: %d, UBI: %d).------------\n\n', use_tax, use_ubi)
 
-            % Compute tax revenue and adjust tau0 for budget balance
+            % --- Optional tax revenue calculation ---
             total_tax_revenue = 0;
-            for s = 1:slen
-                for j = 1:zlen
-                    y = w * wage_mult(s) * zgrid(j); % Middle-aged income (assume l=1 for initial estimate)
-                    tax_rate = tau0 + tau1 * y;
-                    total_tax_revenue = total_tax_revenue + par.skill_prob(s) * tax_rate * y / zlen;
+            if use_tax && use_ubi
+                for s = 1:slen
+                    for j = 1:zlen
+                        wage = par.w_skill(s);
+                        y = wage * zgrid(j); % assume l = 1
+                        net_income = lambda * y^(1 - tau);
+                        tax_paid = y - net_income;
+                        total_tax_revenue = total_tax_revenue + par.skill_prob(s) * tax_paid / zlen;
+                    end
+                end
+                total_ubi = par.ubi * par.nage;
+                if total_tax_revenue < total_ubi
+                    fprintf('Warning: Tax revenue (%.4f) less than UBI cost (%.4f)\n', total_tax_revenue, total_ubi)
                 end
             end
-            total_ubi = par.ubi * par.nage; % Total UBI payments
-            if total_tax_revenue < total_ubi
-                scale = total_ubi / total_tax_revenue;
-                par.tau0 = par.tau0 * scale; % Adjust only tau0 to balance budget
-                % par.tau1 = par.tau1 * scale; % Do not scale tau1
-            end
-            tau0 = par.tau0;
-            tau1 = par.tau1;
-            fprintf('Adjusted progressive tax: tau0 = %.4f, tau1 = %.4f\n', tau0, tau1)
 
-            % Backward induction
+            % --- Backward induction ---
             for age = par.nage:-1:1
                 fprintf('Solving for age %d\n', age)
                 for s = 1:slen
+                    wage = par.w_skill(s);
                     for i = 1:alen
                         if agrid(i) >= phi
                             for j = 1:zlen
-                                % Current resources (without labor income)
                                 resources = (1 + r) * agrid(i) + ubi;
 
-                                if age == par.nage % Old age
-                                    c(i, j, age, s) = resources;
+                                if age == par.nage  % Old
+                                    c(i, j, age, s) = max(0.01, resources);
                                     a_next(i, j, age, s) = 0;
                                     l(i, j, age, s) = 0;
                                     v(i, j, age, s) = modelwithtax.utility(c(i, j, age, s), par);
-                                else % Young or Middle-aged
-                                    % Asset choices
+
+                                else
                                     asset_choices = agrid(agrid >= phi);
-                                    if age == 2 % Middle-aged: Optimize labor supply
-                                        l_grid = linspace(0, 1, 50); % Labor supply grid
+
+                                    if age == 2  % Middle-aged (labor decision)
+                                        l_grid = linspace(l_min, 1, 50);
                                         vall = -inf * ones(length(asset_choices), length(l_grid));
-                                        for il = 1:length(l_grid)
-                                            labor = l_grid(il);
-                                            y = w * wage_mult(s) * zgrid(j) * labor;
-                                            tax_rate = tau0 + tau1 * y;
-                                            income = lambda * y^(1 - (tax_rate*y));
-                                            c_candidates = resources + income - asset_choices;
-                                            c_candidates(c_candidates <= 0) = -inf;
-                                            u = modelwithtax.utility(c_candidates, par) - psi * (l_grid(il).^(1+eta))/(1+eta); % Use element-wise power .^
-                                            ev = v(:, :, age + 1, s) * pmat(j, :)';
-                                            vall(:, il) = u + beta * ev;
-                                            vall(c_candidates <= 0, il) = -inf;
+                                        valid = false(size(vall));
+
+                                        for ia = 1:length(asset_choices)
+                                            a1 = asset_choices(ia);
+                                            [~, idx] = min(abs(agrid - a1));
+                                            ev = v(idx, :, age + 1, s) * pmat(j, :)';
+
+                                            for il = 1:length(l_grid)
+                                                labor = l_grid(il);
+                                                y = wage * zgrid(j) * labor;
+                                                income = use_tax * lambda * y^(1 - tau) + ~use_tax * y;
+                                                c_try = resources + income - a1;
+
+                                                if c_try > 0
+                                                    valid(ia, il) = true;
+                                                    u = modelwithtax.utility(c_try, par) - psi * (labor^(1 + eta)) / (1 + eta);
+                                                    vall(ia, il) = u + beta * ev;
+                                                end
+                                            end
                                         end
-                                        [vmax, ind] = max(vall(:));
-                                        [ia, il] = ind2sub([length(asset_choices), length(l_grid)], ind);
-                                        v(i, j, age, s) = vmax;
-                                        y = w * wage_mult(s) * zgrid(j) * l_grid(il);
-                                        c(i, j, age, s) = resources + (1 - (tau0 + tau1 * y)) * y - asset_choices(ia);
-                                        a_next(i, j, age, s) = asset_choices(ia);
-                                        l(i, j, age, s) = l_grid(il);
-                                    else % Young: No labor
+
+                                        if any(valid(:))
+                                            [vmax, idx] = max(vall(:));
+                                            [ia, il] = ind2sub(size(vall), idx);
+                                            a1 = asset_choices(ia);
+                                            labor = l_grid(il);
+                                            y = wage * zgrid(j) * labor;
+                                            income = use_tax * lambda * y^(1 - tau) + ~use_tax * y;
+                                            c(i, j, age, s) = resources + income - a1;
+                                            a_next(i, j, age, s) = a1;
+                                            l(i, j, age, s) = labor;
+                                            v(i, j, age, s) = vmax;
+                                        else
+                                            c(i, j, age, s) = max(0.01, resources);
+                                            a_next(i, j, age, s) = 0;
+                                            l(i, j, age, s) = l_min;
+                                            v(i, j, age, s) = modelwithtax.utility(c(i, j, age, s), par) - psi * (l_min^(1 + eta)) / (1 + eta);
+                                        end
+                                    else  % Young (no labor)
                                         c_candidates = resources - asset_choices;
-                                        c_candidates(c_candidates <= 0) = -inf;
-                                        ev = mean(v(:, :, age + 1, s), 2);
-                                        vall = modelwithtax.utility(c_candidates, par) + beta * ev;
-                                        vall(c_candidates <= 0) = -inf;
-                                        [vmax, ind] = max(vall);
-                                        v(i, j, age, s) = vmax;
-                                        c(i, j, age, s) = c_candidates(ind);
-                                        a_next(i, j, age, s) = asset_choices(ind);
-                                        l(i, j, age, s) = 0;
+                                        valid_choices = c_candidates > 0;
+                                        if any(valid_choices)
+                                            valid_indices = find(valid_choices);
+                                            ev = zeros(length(valid_indices), 1);
+                                            for k = 1:length(valid_indices)
+                                                a_next_val = asset_choices(valid_indices(k));
+                                                [~, idx] = min(abs(agrid - a_next_val));
+                                                ev(k) = mean(v(idx, :, age + 1, s)); % Scalar expected value
+                                            end
+                                            vall = modelwithtax.utility(c_candidates(valid_choices), par) + beta * ev;
+                                            [vmax, idx] = max(vall);
+                                            v(i, j, age, s) = vmax;
+                                            c(i, j, age, s) = c_candidates(valid_indices(idx));  % <-- FIXED
+                                            a_next(i, j, age, s) = asset_choices(valid_indices(idx));  % <-- FIXED
+                                            l(i, j, age, s) = 0;
+                                        else
+                                            fprintf('Warning: No valid choice found at age %d, skill %d, state (a=%d, z=%d)\n', age, s, i, j);
+                                            c(i, j, age, s) = max(0.01, resources); % Ensure positive consumption
+                                            a_next(i, j, age, s) = 0;
+                                            l(i, j, age, s) = 0;
+                                            v(i, j, age, s) = modelwithtax.utility(c(i, j, age, s), par);
+                                        end
                                     end
                                 end
                             end
@@ -119,31 +158,24 @@ classdef solvewithtax
                 end
             end
 
-            % Store solutions
-            sol.c = c(:, :, 2, :); % Middle-aged consumption
-            sol.c2 = c(:, :, 1, :); % Young consumption
-            sol.c3 = c(:, :, 3, :); % Old consumption
+            % Output results
+            sol.c = c(:, :, 2, :); sol.c2 = c(:, :, 1, :); sol.c3 = c(:, :, 3, :);
+            sol.a = a_next(:, :, 2, :); sol.l = l(:, :, 2, :);
             sol.v = v;
-            sol.a = a_next(:, :, 2, :); % Middle-aged savings
-            sol.l = l(:, :, 2, :); % Middle-aged labor supply
-            sol.tau0 = tau0;
-            sol.tau1 = tau1;
+            sol.lambda = lambda; sol.tau = tau; sol.ubi = ubi;
 
             % Compute welfare
-            util = nan(alen, zlen, par.nage, slen);
+            util = nan(size(c));
             for age = 1:par.nage
                 for s = 1:slen
-                    util(:, :, age, s) = modelwithtax.utility(c(:, :, age, s), par) - psi * (l(:, :, age, s).^(1+eta))/(1+eta); % Use element-wise power .^
+                    util(:, :, age, s) = modelwithtax.utility(c(:, :, age, s), par) - psi * (l(:, :, age, s).^(1+eta)) / (1+eta);
                 end
             end
-            avg_utility_low = mean(util(:, :, :, 1), 'all', 'omitnan');
-            avg_utility_high = mean(util(:, :, :, 2), 'all', 'omitnan');
-            avg_utility = mean(util, 'all', 'omitnan');
-            sol.welfare_low = avg_utility_low;
-            sol.welfare_high = avg_utility_high;
-            sol.welfare = avg_utility;
+            sol.welfare_low = mean(util(:, :, :, 1), 'all', 'omitnan');
+            sol.welfare_high = mean(util(:, :, :, 2), 'all', 'omitnan');
+            sol.welfare = mean(util, 'all', 'omitnan');
 
-            fprintf('------------Backward Induction Complete.------------\n\n')
+            fprintf('------------Backward Induction Complete (Tax: %d, UBI: %d).------------\n\n', use_tax, use_ubi)
             fprintf('Welfare (overall): %.4f\n', sol.welfare)
             fprintf('Welfare (low-skill): %.4f\n', sol.welfare_low)
             fprintf('Welfare (high-skill): %.4f\n', sol.welfare_high)
