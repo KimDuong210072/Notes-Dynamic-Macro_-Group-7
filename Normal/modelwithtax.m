@@ -33,7 +33,7 @@ classdef modelwithtax
             par.skill_types = [1, 2]; % 1 = low-skill, 2 = high-skill
             par.slen = 2; % Number of skill types
             par.skill_prob = [0.5, 0.5]; % Probability of low/high skill
-            par.wage_mult = [1.0, 1.5]; % Wage multipliers (low = 1.0, high = 1.5)
+            par.wage_mult = [0.5, 1.5]; % Wage multipliers (low = 1.0, high = 1.5)
             par.N = 100; % Number of agents (was 30)
             par.seed = 2025; % Random seed
             rng(par.seed); % Set random seed for reproducibility

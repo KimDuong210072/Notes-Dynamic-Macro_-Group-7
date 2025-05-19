@@ -5,9 +5,9 @@ classdef lmodelwithtax
 
             %% Preferences.
             par.beta = 0.94; % Discount factor
-            par.sigma = 1.5; % Risk aversion (CRRA utility) (was 2.0)
-            par.psi = 0.3; % Disutility of labor (was 1.0)
-            par.eta = 0.3; % Inverse Frisch elasticity of labor supply (was 1.0)
+            par.sigma = 1.5; % Risk aversion (CRRA utility)
+            par.psi = 0.3; % Disutility of labor
+            par.eta = 0.3; % Inverse Frisch elasticity
             assert(par.beta > 0 && par.beta < 1.00, 'Beta must be in (0,1)')
             assert(par.sigma > 0, 'Sigma must be positive')
             assert(par.psi > 0, 'Psi must be positive')
@@ -34,7 +34,7 @@ classdef lmodelwithtax
             par.slen = 2; % Number of skill types
             par.skill_prob = [0.5, 0.5]; % Probability of low/high skill
             par.wage_mult = [1.0, 1.5]; % Wage multipliers (low = 1.0, high = 1.5)
-            par.N = 100; % Number of agents (was 30)
+            par.N = 100; % Number of agents
             par.seed = 2025; % Random seed
             rng(par.seed); % Set random seed for reproducibility
             par.skill_assign = rand(1, par.N) < par.skill_prob(2); % Random skill assignment
@@ -45,11 +45,11 @@ classdef lmodelwithtax
             %% Prices and Policy.
             par.r = 0.06; % Interest rate (fixed for PE)
             par.w = 0.2; % Base wage (updated by firm_problem)
-            par.tau = 0.2; % Flat tax rate
-            par.ubi = 0.05; % Universal Basic Income (per agent, per period) (was 0.1)
+            par.theta = 0.0; % Fixed tax rate (to be computed)
+            par.ubi = 0.05; % Universal Basic Income (per agent, per period 0.05
             assert(par.r >= -1, 'Interest rate must allow non-negative returns')
             assert(par.w > 0, 'Wage must be positive')
-            %assert(par.tau0 >= 0 && par.tau1 >= 0, 'Tax rates must be non-negative')
+            assert(par.theta >= 0, 'Tax rate must be non-negative')
             assert(par.ubi >= 0, 'UBI must be non-negative')
 
             %% Simulation parameters.

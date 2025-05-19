@@ -1,4 +1,4 @@
-classdef lsimulate
+classdef simulate
     methods(Static)
         function sim = economy(par, sol)
             %% Set up.
@@ -7,12 +7,7 @@ classdef lsimulate
             pmat = par.pmat;
             nage = par.nage;
             N = par.N;
-            slen = par.slen;
             skill_assign = par.skill_assign;
-            w = par.w;
-            r = par.r;
-            ubi = par.ubi;
-            wage_mult = par.wage_mult;
             psi = par.psi;
             eta = par.eta;
 
@@ -52,7 +47,7 @@ classdef lsimulate
                 zt_ind = z0_ind(i);
                 csim(1, i) = cpol_young(at_ind, zt_ind, 1, s);
                 asim(1, i) = agrid(at_ind); % Assets = 0
-                usim(1, i) = lmodelwithtax.utility(csim(1, i), par);
+                usim(1, i) = modelwithtax.utility(csim(1, i), par);
                 lsim(1, i) = 0;
                 a_next = 0; % Young don't save
                 at_ind = find(agrid == a_next);
@@ -63,7 +58,7 @@ classdef lsimulate
                 asim(2, i) = apol(at_ind, zt_ind, 1, s);
                 lsim(2, i) = lpol(at_ind, zt_ind, 1, s);
                 fprintf('Agent %d, Skill %d, Savings: %.4f, Labor: %.4f\n', i, s, asim(2, i), lsim(2, i)); % Debug
-                usim(2, i) = lmodelwithtax.utility(csim(2, i), par) - psi * (lsim(2, i)^(1+eta))/(1+eta);
+                usim(2, i) = modelwithtax.utility(csim(2, i), par) - psi * (lsim(2, i)^(1+eta))/(1+eta);
                 zsim(2, i) = zgrid(zt_ind);
                 at_ind = find(agrid <= asim(2, i), 1, 'last');
                 z1_ind = find(rand <= cmat(zt_ind, :));
@@ -72,7 +67,7 @@ classdef lsimulate
                 % Age 3: Old
                 csim(3, i) = cpol_old(at_ind, zt_ind, 1, s);
                 asim(3, i) = 0;
-                usim(3, i) = lmodelwithtax.utility(csim(3, i), par);
+                usim(3, i) = modelwithtax.utility(csim(3, i), par);
                 lsim(3, i) = 0;
             end
 

@@ -1,11 +1,3 @@
-%% File Info.
-%{
-    my_graph.m
-    ----------
-    This code plots the wealth distribution, consumption/value functions, and labor supply distribution for the life-cycle model in partial equilibrium (PE).
-%}
-
-%% Graph class.
 classdef my_graph
     methods(Static)
         %% Plot wealth distribution by skill type (Partial Equilibrium).
@@ -30,6 +22,7 @@ classdef my_graph
 
             saveas(gcf, 'wealth_distribution_pe.png')
         end
+
         %% Plot wealth distribution by skill type (General Equilibrium).
         function [] = plot_dist_ge(sim_ge, par_ge, sol_ge)
             figure(2)
@@ -54,7 +47,7 @@ classdef my_graph
         end
 
         %% Plot consumption policy functions by age and skill (Partial Equilibrium).
-        function [] = cfun(par, sol, sim)
+        function [] = cfun(par, sol, sim) 
             figure(3)
             set(gcf, 'Position', [100, 100, 1200, 800])
 
@@ -122,9 +115,44 @@ classdef my_graph
             saveas(gcf, 'value_functions_pe.png')
         end
 
-        %% Plot labor supply distribution by skill type (Partial Equilibrium).
-        function [] = plot_labor_dist(sim, par)
+        %% Plot value functions for different scenarios (No Tax/UBI, Tax Only, Tax+UBI).
+        function [] = plot_value_functions_scenarios(par, sol_no_tax_no_ubi, sol_tax_only, sol_tax_ubi)
             figure(5)
+            set(gcf, 'Position', [100, 100, 1600, 1200])
+
+            agrid = par.agrid;
+            zgrid = par.zgrid;
+            z_median_ind = ceil(length(zgrid) / 2); % Median productivity state
+
+            % Extract value functions for each scenario
+            v_no_tax_no_ubi = squeeze(sol_no_tax_no_ubi.v(:, z_median_ind, :, :)); % (alen, nage, slen)
+            v_tax_only = squeeze(sol_tax_only.v(:, z_median_ind, :, :));
+            v_tax_ubi = squeeze(sol_tax_ubi.v(:, z_median_ind, :, :));
+
+            % Plot for each age and skill type
+            for s = 1:2 % 1 = low-skill, 2 = high-skill
+                for age = 1:par.nage
+                    subplot(par.nage, 2, (age - 1) * 2 + s)
+                    hold on
+                    plot(agrid, v_no_tax_no_ubi(:, age, s), 'b-', 'LineWidth', 2, 'DisplayName', 'No Tax, No UBI')
+                    plot(agrid, v_tax_only(:, age, s), 'r--', 'LineWidth', 2, 'DisplayName', 'Tax Only')
+                    plot(agrid, v_tax_ubi(:, age, s), 'g-', 'LineWidth', 2, 'DisplayName', 'Tax + UBI')
+                    hold off
+                    xlabel('$a_t$', 'Interpreter', 'latex', 'FontSize', 12)
+                    ylabel('$V_t$', 'Interpreter', 'latex', 'FontSize', 12)
+                    title(sprintf('Value Function (Age: %d, Skill: %s)', ...
+                        age, my_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
+                    legend('show', 'Interpreter', 'latex', 'FontSize', 10)
+                    grid on
+                end
+            end
+
+            saveas(gcf, 'value_functions_scenarios_pe.png')
+        end
+
+        %% Plot labor supply distribution by skill type (Partial Equilibrium).
+        function [] = plot_labor_dist(par, sol, sim)
+            figure(6)
             set(gcf, 'Position', [100, 100, 1200, 400])
 
             lsim_middle = sim.lsim(2, :); % Middle-aged labor supply
