@@ -1,6 +1,9 @@
 classdef lmy_graph
     methods(Static)
         %% Plot wealth distribution by skill type (Partial Equilibrium).
+               %% Helper function for conditional string
+
+        
         function [] = plot_dist(par, sol, sim)
             figure(1)
             set(gcf, 'Position', [100, 100, 1200, 400])
@@ -65,7 +68,7 @@ classdef lmy_graph
                 xlabel('$a_t$', 'Interpreter', 'latex', 'FontSize', 12)
                 ylabel('$c_t$', 'Interpreter', 'latex', 'FontSize', 12)
                 title(sprintf('Young Consumption (Skill: %s)', ...
-                    my_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
+                lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
                 grid on
 
                 % Middle-aged
@@ -74,7 +77,7 @@ classdef lmy_graph
                 xlabel('$a_t$', 'Interpreter', 'latex', 'FontSize', 12)
                 ylabel('$c_t$', 'Interpreter', 'latex', 'FontSize', 12)
                 title(sprintf('Middle-Aged Consumption (Skill: %s)', ...
-                    my_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
+                lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
                 grid on
 
                 % Old
@@ -83,7 +86,7 @@ classdef lmy_graph
                 xlabel('$a_t$', 'Interpreter', 'latex', 'FontSize', 12)
                 ylabel('$c_t$', 'Interpreter', 'latex', 'FontSize', 12)
                 title(sprintf('Old Consumption (Skill: %s)', ...
-                    my_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
+                lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
                 grid on
             end
 
@@ -107,7 +110,7 @@ classdef lmy_graph
                     xlabel('$a_t$', 'Interpreter', 'latex', 'FontSize', 12)
                     ylabel('$V_t$', 'Interpreter', 'latex', 'FontSize', 12)
                     title(sprintf('Value Function (Age: %d, Skill: %s)', ...
-                        age, lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
+                    age, lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
                     grid on
                 end
             end
@@ -141,7 +144,7 @@ classdef lmy_graph
                     xlabel('$a_t$', 'Interpreter', 'latex', 'FontSize', 12)
                     ylabel('$V_t$', 'Interpreter', 'latex', 'FontSize', 12)
                     title(sprintf('Value Function (Age: %d, Skill: %s)', ...
-                        age, lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
+                    age, lmy_graph.ifelse(s == 1, 'Low', 'High')), 'Interpreter', 'latex', 'FontSize', 14)
                     legend('show', 'Interpreter', 'latex', 'FontSize', 10)
                     grid on
                 end
@@ -173,13 +176,12 @@ classdef lmy_graph
             saveas(gcf, 'labor_distribution_pe_nonlinear.png')
         end
 
-        %% Helper function for conditional string
-        %function str = ifelse(condition, true_str, false_str)
-            %if condition
-               %str = true_str;
-            %else
-                %str = false_str;
-            %end
-        %end
+        function str = ifelse(condition, true_str, false_str)
+            if condition
+               str = true_str;
+            else
+                str = false_str;
+            end
+        end
     end
 end
