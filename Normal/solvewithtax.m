@@ -31,7 +31,7 @@ classdef solvewithtax
             pmat = par.pmat;
             r = par.r;
             ubi = par.ubi * use_ubi;
-            wage_mult = par.wage_mult;
+            %wage_mult = par.wage_mult;
             slen = par.slen;
             lambda = par.lambda * use_tax;
             tau = par.tau * use_tax;
@@ -48,7 +48,7 @@ classdef solvewithtax
 
             fprintf('------------Beginning Backward Induction (Tax: %d, UBI: %d).------------\n\n', use_tax, use_ubi)
 
-            % --- Optional tax revenue calculation ---
+            % --- Tax revenue calculation ---
             total_tax_revenue = 0;
             if use_tax && use_ubi
                 for s = 1:slen
@@ -97,13 +97,14 @@ classdef solvewithtax
 
                                             for il = 1:length(l_grid)
                                                 labor = l_grid(il);
-                                                y = wage * zgrid(j) * labor;
-                                                income = use_tax * lambda * y^(1 - tau) + ~use_tax * y;
+                                                y = wage * zgrid(j) * labor + ~use_tax * y;
+                                                income = use_tax * lambda * y^(1 - tau);
                                                 c_try = resources + income - a1;
 
                                                 if c_try > 0
                                                     valid(ia, il) = true;
-                                                    u = modelwithtax.utility(c_try, par) - psi * (labor^(1 + eta)) / (1 + eta);
+                                                    u = modelwithtax.utility(c_try, par);
+                                                    vall(c<=0) = -inf; %Set the value function to negative infinity when c < 0.
                                                     vall(ia, il) = u + beta * ev;
                                                 end
                                             end
@@ -114,8 +115,8 @@ classdef solvewithtax
                                             [ia, il] = ind2sub(size(vall), idx);
                                             a1 = asset_choices(ia);
                                             labor = l_grid(il);
-                                            y = wage * zgrid(j) * labor;
-                                            income = use_tax * lambda * y^(1 - tau) + ~use_tax * y;
+                                            y = wage * zgrid(j) * labor + ~use_tax * y;
+                                            income = use_tax * lambda * y^(1 - tau) ;
                                             c(i, j, age, s) = resources + income - a1;
                                             a_next(i, j, age, s) = a1;
                                             l(i, j, age, s) = labor;

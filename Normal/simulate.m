@@ -8,8 +8,6 @@ classdef simulate
             nage = par.nage;
             N = par.N;
             skill_assign = par.skill_assign;
-            psi = par.psi;
-            eta = par.eta;
 
             cpol = sol.c;         % Middle-aged consumption
             cpol_young = sol.c2;  % Young consumption
@@ -51,7 +49,7 @@ classdef simulate
                 csim(2, i) = cpol(at_ind, zt_ind, 1, s);
                 asim(2, i) = apol(at_ind, zt_ind, 1, s);
                 lsim(2, i) = lpol(at_ind, zt_ind, 1, s);
-                usim(2, i) = modelwithtax.utility(csim(2, i), par) - psi * (lsim(2, i)^(1+eta))/(1+eta);
+                usim(2, i) = modelwithtax.utility(csim(2, i), par);
                 zsim(2, i) = zgrid(zt_ind);
 
                 at_ind = find(agrid <= asim(2, i), 1, 'last');
