@@ -46,6 +46,7 @@ classdef lmodelwithtax
             par.r = 0.06; % Interest rate (fixed for PE)
             par.w = 0.2; % Base wage (updated by firm_problem)
             par.theta = 0.0; % Fixed tax rate (to be computed)
+            par.ubi = 0.05;
             assert(par.r >= -1, 'Interest rate must allow non-negative returns')
             assert(par.w > 0, 'Wage must be positive')
             assert(par.theta >= 0, 'Tax rate must be non-negative')
